@@ -1,0 +1,6 @@
+homeassistant/home-assistant:stable
+portainer/portainer-ce
+jeroenslot/nordvpn-proxy
+theiaide/theia-python
+pihole/pihole:latest
+ghcr.io/linuxserver/muximux
