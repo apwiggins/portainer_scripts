@@ -4,4 +4,4 @@
 sudo docker image prune -f
 
 # remove dangling volumes
-sudo docker volume rm `docker volume ls -q -f dangling=true`
+sudo docker volume rm "$(docker volume ls -q -f dangling=true)"

@@ -36,11 +36,11 @@ for i in $(seq 1 20); do
         printf '.'
     fi
 
-    if [ $i -eq 20 ] ; then
+    if [ "${i}" -eq 20 ] ; then
         echo -e "\nTimed out waiting for Pi-hole start, consult check your container logs for more info (\`docker logs pihole\`)"
         exit 1
     fi
 done;
 
 echo "==> Removing dangling volumes from old container"
-docker volume rm 'docker volume ls -q -f dangling=true'
+docker volume rm "$(docker volume ls -q -f dangling=true)"
