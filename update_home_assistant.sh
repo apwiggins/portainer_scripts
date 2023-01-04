@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
 
+# template for building containers
 name='home-assistant'
 image='homeassistant/home-assistant:stable'
 
-sh ./update_container.sh $name $image
+sh ./update_container.sh ${name} ${image}
 
 sudo docker create \
-    --name=$name \
+    --name=${name} \
     --net=host \
     -e PUID=1000 \
     -e GUID=1000 \
-    -v /home/docker/homeassistant:/config \
+    -v /home/docker/${name}:/config \
     -v /etc/localtime:/etc/localtime:ro \
     --restart unless-stopped \
-    $image
+    ${image}
 
-sudo docker start $name
+sudo docker start ${name}
