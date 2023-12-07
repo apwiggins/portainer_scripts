@@ -14,8 +14,12 @@ sudo docker rm "$name"
 echo "==> removing old images"
 sudo docker image prune -f
 
-echo "==> removing old volumes"
-sudo docker volume rm " 'docker volume ls -q -f dangling=true}' "
+echo "==> Removing old volumes"
+old_volumes=$(docker volume ls -q -f dangling=true)
+if [ -n "$old_volumes"  ]; then                                                                        
+    echo "Removing old volumes:"                                                                       
+    echo "$old_volumes" | xargs docker volume rm                                                       
+fi 
 
 echo "==> pulling new ""$name"" container"
 sudo docker pull "$image"
