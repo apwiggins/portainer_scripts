@@ -1,0 +1,738 @@
+---
+#  Serve a large list of radio stations through DLNA
+
+services:
+  # -------------------------
+  # Python playlist generator
+  # -------------------------
+  playlist-generator:
+    image: python:3.12-slim
+    container_name: playlist-generator
+    volumes:
+      - radio-playlists:/app/playlists
+    configs:
+      - source: radio-stations
+        target: /app/radio_stations.m3u
+      - source: generate-playlists
+        target: /app/generate_playlists.py
+    command: >
+      sh -c "while true; do
+               python3 /app/generate_playlists.py /app/radio_stations.m3u /app/playlists
+               sleep 3600
+             done"
+    restart: unless-stopped
+
+  # -------------------------
+  # Gerbera DLNA server
+  # -------------------------
+  gerbera:
+    image: gerbera/gerbera:3.1.1
+    container_name: gerbera
+    network_mode: host
+    volumes:
+      - radio-playlists:/mnt/content/radio
+      - gerbera-data:/var/lib/gerbera
+
+    configs:
+      - source: gerbera-conf
+        target: /var/lib/gerbera/config.xml
+    restart: unless-stopped
+
+volumes:
+  radio-playlists:
+  gerbera-data:
+
+# -------------------------
+# Embedded configs
+# -------------------------
+configs:
+
+  # 1. Radio stations 
+  # Python script below the following list decodes custom groups to separate .m3u
+  # this provides folders of radio stations within the DLNA browsing
+  radio-stations:
+    content: |
+      #EXTM3U
+
+      #EXTINF:-1, tvg-logo="http://radio.pervii.com/im/3/1550031043.jpg" group-title="ELECTRONIC Radio", Dance UK Radio
+      http://51.89.148.171:8022/stream/1/
+      #EXTINF:-1, group-title="BBC", BBC Radio 1
+      http://bbcmedia.ic.llnwd.net/stream/bbcmedia_radio1_mf_p
+      #EXTINF:-1, group-title="BBC", BBC Radio One
+      http://as-hls-ww-live.akamaized.net/pool_01505109/live/ww/bbc_radio_one/bbc_radio_one.isml/bbc_radio_one-audio%3d320000.norewind.m3u8/bbc_radio_one-audio%3d320000.norewind.m3u8
+      #EXTINF:-1, group-title="BBC", BBC Radio Two
+      http://as-hls-ww-live.akamaized.net/pool_74208725/live/ww/bbc_radio_two/bbc_radio_two.isml/bbc_radio_two-audio%3d320000.norewind.m3u8
+      #EXTINF:-1, group-title="BBC", BBC Radio Three
+      http://as-hls-ww-live.akamaized.net/pool_23461179/live/ww/bbc_radio_three/bbc_radio_three.isml/bbc_radio_three-audio%3d320000.norewind.m3u8
+      #EXTINF:-1, group-title="BBC", BBC Radio Fourfm
+      http://as-hls-ww-live.akamaized.net/pool_55057080/live/ww/bbc_radio_fourfm/bbc_radio_fourfm.isml/bbc_radio_fourfm-audio%3d320000.norewind.m3u8
+      #EXTINF:-1, group-title="BBC", BBC Radio Five Live
+      http://as-hls-ww-live.akamaized.net/pool_89021708/live/ww/bbc_radio_five_live/bbc_radio_five_live.isml/bbc_radio_five_live-audio%3d320000.norewind.m3u8
+      #EXTINF:-1, group-title="BBC", BBC Radio Five Live Sports Extra-Audio%3d96000 Norewind
+      http://as-hls-uk-live.akamaized.net/pool_47700285/live/uk/bbc_radio_five_live_sports_extra/bbc_radio_five_live_sports_extra.isml/bbc_radio_five_live_sports_extra-audio%3d96000.norewind.m3u8
+      #EXTINF:-1, group-title="BBC", BBC 6 music-Audio Norewind
+      http://as-hls-ww-live.akamaized.net/pool_81827798/live/ww/bbc_6music/bbc_6music.isml/bbc_6music-audio%3d320000.norewind.m3u8
+      #EXTINF:-1, group-title="BBC", BBC Radio Norfolk- Audio Norewind
+      http://as-hls-ww-live.akamaized.net/pool_61510571/live/ww/bbc_radio_norfolk/bbc_radio_norfolk.isml/bbc_radio_norfolk-audio%3d96000.norewind.m3u8
+      #EXTINF:-1, group-title="Chérie FM", Chérie FM
+      http://cdn.nrjaudio.fm/audio1/fr/30201/mp3_128.mp3
+      #EXTINF:-1, group-title="Chérie FM", Chérie Acoustic
+      http://cdn.nrjaudio.fm/adwz1/fr/30269/mp3_128.mp3
+      #EXTINF:-1, group-title="Chérie FM", Chérie Cœur Brisé
+      http://cdn.nrjaudio.fm/adwz1/fr/56303/mp3_128.mp3
+      #EXTINF:-1, group-title="Chérie FM", Chérie Frenchy
+      http://cdn.nrjaudio.fm/adwz1/fr/30213/mp3_128.mp3
+      #EXTINF:-1, group-title="Chérie FM", Chérie Love Songs
+      http://cdn.nrjaudio.fm/adwz1/fr/30207/mp3_128.mp3
+      #EXTINF:-1, group-title="Chérie FM", Chérie 80's
+      http://cdn.nrjaudio.fm/adwz1/fr/30237/mp3_128.mp3
+      #EXTINF:-1, group-title="Chérie FM", Chérie 90's
+      http://cdn.nrjaudio.fm/adwz1/fr/30239/mp3_128.mp3
+      #EXTINF:-1, group-title="Classic FM", Classic FM
+      http://media-ice.musicradio.com/ClassicFMMP3
+      #EXTINF:-1, group-title="Czech", Czech Radio ČRo Jazz (Jazz)
+      http://amp.cesnet.cz:8000/cro-jazz.flac
+      #EXTINF:-1, group-title="Czech",  C Ceský Vltava
+      http://amp.cesnet.cz:8000/cro3.flac
+      #EXTINF:-1, group-title="Czech",  C Ceský D-dur
+      http://amp.cesnet.cz:8000/cro-d-dur.flac
+      #EXTINF:-1, group-title="Czech",  C Ceský Wave
+      http://amp.cesnet.cz:8000/cro-radio-wave.flac
+      #EXTINF:-1, group-title="Czech", Ceský Jazz
+      http://amp.cesnet.cz:8000/cro-jazz.flac
+      #EXTINF:-1, group-title="Czech",  C Radiozurnal
+      http://amp.cesnet.cz:8000/cro1-256.ogg
+      #EXTINF:-1, tvg-logo=
+      https://static.mytuner.mobi/media/tvos_radios/faa3fcf9adhd.jpg, group-title="EDM;Dance", 1 Pure EDM Radio
+      https://maggie.torontocast.com:2020/stream/1pureedmradio
+      #EXTINF:-1, group-title="France Bleu", France Bleu Périgord
+      http://direct.francebleu.fr/live/fbperigord-midfi.mp3
+      #EXTINF:-1, group-title="HILINE", - HILINE FLAC
+      http://mscp2.live-streams.nl:8100/flac.flac
+      #EXTINF:-1, group-title="HILINE", - HILINE POP
+      http://mediaserv30.live-streams.nl:8086/live
+      #EXTINF:-1, group-title="HILINE", - HILINE WORLD
+      http://mediaserv38.live-streams.nl:8027/live
+      #EXTINF:-1, group-title="HILINE", - HILINE GOLD
+      http://mediaserv30.live-streams.nl:8000/live
+      #EXTINF:-1, group-title="HILINE", - HILINE CLASSICAL
+      http://mediaserv30.live-streams.nl:8088/live
+      #EXTINF:-1, group-title="HILINE", - HILINE LATIN
+      http://mediaserv33.live-streams.nl:8034/stream
+      #EXTINF:-1, group-title="HILINE", - HILINE LOUNGE
+      http://mediaserv33.live-streams.nl:8036/stream
+      #EXTINF:-1, group-title="HILINE", - RADIO SINGSING
+      http://stream.sing-sing-bis.org:8000/singsingFlac
+      #EXTINF:-1, group-title="HILINE", - HILINE France Radio
+      http://mediaserv21.live-streams.nl:8000/stream
+      #EXTINF:-1, group-title="International", JB Radio 2 FLAC
+      http://stream.jbradio2.ca:8888/flac
+      #EXTINF:-1, group-title="International", JB Radio 2 MP3 320
+      http://cristina.torontocast.com:8007/mp3-320
+      #EXTINF:-1, group-title="International", JB Radio-2 - High Resolution Audio
+      http://199.189.87.9:10999/flac.m3u
+      #EXTINF:-1, group-title="Jazz", HILINE JAZZ
+      http://mediaserv38.live-streams.nl:8006/stream
+      #EXTINF:-1, group-title="Jazz",  - Majestic Jukebox
+      http://uk3.internet-radio.com:8405/live
+      #EXTINF:-1, group-title="Jazz",  - Insanity
+      https://stream.cor.insanityradio.com/insanity.flac
+      #EXTINF:-1, group-title="Jazz",  - Frequence3
+      http://master.net-radio.fr:80/frequence3.flac
+      #EXTINF:-1, group-title="Jazz",  - Frequence3urban
+      http://ice1.ikoula.net-radio.fr:80/frequence3urban.flac
+      #EXTINF:-1, group-title="KCRW", KCRW
+      http://media.kcrw.com/pls/kcrwsimulcast.pls
+      #EXTINF:-1, group-title="KCRW", KCRW Eclectic 24
+      http://media.kcrw.com/pls/kcrwmusic.pls
+      #EXTINF:-1, group-title="KCRW", KCRW News 24
+      http://media.kcrw.com/pls/kcrwnews.pls
+      #EXTINF:-1, group-title="KCRW", KCRW Santa Barbara
+      http://media.kcrw.com/pls/kcrwsantabarbara.pls
+      #EXTINF:-1, group-title="KRUI", - KRUI
+      http://krui.student-services.uiowa.edu:8000/listen
+      #EXTINF:-1, group-title="LBC", - LBC
+      http://icecast.thisisdax.com/LBCUK
+      #EXTINF:-1, group-title="Linn Radio", Linn Classical
+      http://89.16.185.174:8004/stream
+      #EXTINF:-1, group-title="Linn Radio", Linn Jazz
+      http://89.16.185.174:8000/stream
+      #EXTINF:-1, group-title="Linn Radio", Linn Radio
+      http://89.16.185.174:8003/stream
+      #EXTINF:-1, group-title="Linn Radio", - Linn Radio
+      http://radio.linn.co.uk:8003/stream
+      #EXTINF:-1, group-title="Linn Radio", Linn Jazz
+      http://radio.linn.co.uk:8000/stream
+      #EXTINF:-1, group-title="Linn Radio", - Linn Classical
+      http://radio.linn.co.uk:8004/stream
+      #EXTINF:-1, group-title="Misc", - 60North Radio
+      http://r5.zetcast.net/flac
+      #EXTINF:-1, group-title="Misc", - Radio Calico
+      https://radio3.radio-calico.com:8443/calico
+      #EXTINF:-1, group-title="Misc", - MaXXima
+      http://maxxima.mine.nu:8000/maxx.ogg
+      #EXTINF:-1, group-title="Misc", - SUN RADIO FLAC
+      http://diffusion.lafrap.fr:8000/sun.flac
+      #EXTINF:-1, group-title="Misc", - H2O RADIO FLAC
+      http://master.net-radio.fr:80/h2oradio.flac
+      #EXTINF:-1, group-title="Misc", - THE CHEESE FLAC
+      https://station.thecheese.co.nz/listen/the_cheese/flac
+      #EXTINF:-1, group-title="Misc", - 95B FM FLAC
+      https://streams.95bfm.com/stream112
+      #EXTINF:-1, group-title="Misc", - Magic Radio Flac
+      http://flac.magic-radio.net/flac
+      #EXTINF:-1, group-title="Miscellaneous RADIO", 100% Radio - Carcassonne
+      http://100radio-carcassonne.ice.infomaniak.ch/100radio-carcassonne-128.mp3
+      #EXTINF:-1, tvg-logo="https://ca.radio.net/images/broadcasts/66/67/40992/1/c300.png" group-title=Miscellaneous RADIO" 1 Pure Alternative Radio
+      https://jenny.torontocast.com:2000/stream/1purealternativeradio/stream
+      #EXTINF:-1, group-title="Miscellaneous RADIO", - GenX Radio Suffolk
+      http://s2.radio.co:80/sf25229e16/listen
+      #EXTINF:-1, group-title="Miscellaneous RADIO", - K Free
+      https://kfre.s3.amazonaws.com/truehd/FLAC/program.m3u8
+      #EXTINF:-1, group-title="Miscellaneous RADIO", - Radio 90fm
+      http://stream.radio90.fm:2000/stream
+      #EXTINF:-1, group-title="Miscellaneous RADIO", - Radio Summer
+      http://flacradio.ru:1110/stream
+      #EXTINF:-1, group-title="Miscellaneous RADIO", - Radio Calico
+      http://radio3.radio-calico.com:8080/calico
+      #EXTINF:-1, group-title="Miscellaneous RADIO", - Frequence3
+      https://frequence3.net-radio.fr/frequence3.flac
+      #EXTINF:-1, group-title="Miscellaneous RADIO", - The Music Machine 1
+      https://msmn3.co/proxy/x1mp31/stream
+      #EXTINF:-1, group-title="Miscellaneous RADIO", - The Music Machine 2
+      https://msmn3.co/proxy/x2mp31/stream
+      #EXTINF:-1, group-title="Miscellaneous RADIO", - Le Bon Mix Soft
+      https://stream9.xdevel.com/audio1s976748-1515/stream/icecast.audio
+      #EXTINF:-1, group-title="Miscellaneous RADIO", - Le Bon Mix Dynamic
+      https://stream10.xdevel.com/audio15s976748-2112/stream/icecast.audio
+      #EXTINF:-1, group-title="Miscellaneous RADIO", - Le Bon Le Poste Parisien
+      https://stream10.xdevel.com/audio12s976748-1798/stream/icecast.audio
+      #EXTINF:-1, group-title="Miscellaneous RADIO", - Haarlem Shuffle Radio
+      https://stream.tbmp.nl:8000/haarlemshuffle.flac
+      #EXTINF:-1, group-title="Miscellaneous RADIO", - Radio Jeunes Reims
+      http://stream.rjrradio.fr:8000/rjr-dab.flac
+      #EXTINF:-1, group-title="Miscellaneous RADIO", - Aida radio
+      https://cdn05.radio.cloud:8128/AIDA-OMNIA-GAI
+      #EXTINF:-1, group-title="Miscellaneous RADIO", - DJam
+      https://stream10.xdevel.com/audio15s976748-2280/stream/icecast.audio
+      #EXTINF:-1, group-title="Miscellaneous RADIO", - ISEKOI Radio
+      https://isekoi-radio.com/listen/isekoi/radio.flac
+      #EXTINF:-1, group-title="Miscellaneous RADIO", - ISEKOI Radio Ambient
+      https://isekoi-radio.com/listen/ambient/ambientradio.flac
+      #EXTINF:-1, group-title="Miscellaneous RADIO", - HiFi Dream Radio
+      https://cdn06-us-east.radio.cloud/80ba63862a97bd69c593cc7a2ccaab1c_hq
+      #EXTINF:-1, group-title="Miscellaneous RADIO", - BeeRadio Classics
+      http://stream.beeradio.nl/classics
+      #EXTINF:-1, group-title="Miscellaneous RADIO", - TNM Radio
+      http://stream.tnm-radio.eu/ultra
+      #EXTINF:-1, group-title="Miscellaneous RADIO", - Big Bang Radio
+      https://audio-edge-cmc51.fra.h.radiomast.io/2b410ada-8653-40aa-a654-3e8954cf4a4d
+      #EXTINF:-1, tvg-logo=https://d1ujqdpfgkvqfi.cloudfront.net/favicon-generator/htdocs/favicons/2021-09-06/6c0563a4bb439ddd885e690af1987ba3.ico.png, group-title="Miscellaneous RADIO", 70 80 90 Italia D'Autore
+      https://maggie.torontocast.com:2020/stream/708090italiadautore
+      #EXTINF:-1, group-title="Motherearth",  C Motherearth Flac-Lo
+      https://motherearth.streamserver24.com/listen/motherearth/motherearth.flac-lo
+      #EXTINF:-1, group-title="Motherearth",  C Motherearth 192
+      https://motherearth.streamserver24.com/listen/motherearth/motherearth
+      #EXTINF:-1, group-title="Motherearth", Motherearth 192 Jazz
+      https://motherearth.streamserver24.com/listen/motherearth_jazz/motherearth.jazz
+      #EXTINF:-1, group-title="Naim Radio", Naim Radio
+      http://mscp3.live-streams.nl:8360/flac.flac
+      #EXTINF:-1, group-title="Naim Radio", Naim Classical
+      http://mscp3.live-streams.nl:8250/class-flac.flac
+      #EXTINF:-1, group-title="Naim Radio", Naim Radio Flac
+      http://mscp3.live-streams.nl:8360/flac.flac
+      #EXTINF:-1, group-title="Naim Radio", Naim Classical
+      http://mscp3.live-streams.nl:8250/class-flac.flac
+      #EXTINF:-1, group-title="Naim Radio", Naim Jazz
+      http://mscp3.live-streams.nl:8340/jazz-flac.flac
+      #EXTINF:-1, group-title="NATION RADIO", Nation Radio UK
+      http://www.radiofeeds.net/playlists/sharptemp.pls?station=nationukdab-mp3
+      #EXTINF:-1, group-title="NATION RADIO", Nation Radio UK AAC 48
+      http://www.radiofeeds.net/playlists/sharptemp.pls?station=thamesradio-aac
+      #EXTINF:-1, group-title="NATION RADIO", - Nation60sdab
+      http://listen-nation.sharp-stream.com/nation60sdab.mp3?ref=RF Title1=nation60sdab.mp3
+      #EXTINF:-1, group-title="NATION RADIO", - Nationradio70s-Dab
+      http://listen-nation.sharp-stream.com/nationradio70s-dab.mp3?ref=RF Title1=nationradio70s-dab.mp3
+      #EXTINF:-1, group-title="NATION RADIO", - Nationradio80s-Dab
+      http://listen-nation.sharp-stream.com/nationradio80s-dab.mp3?ref=RF Title1=nationradio80s-dab.mp3
+      #EXTINF:-1, group-title="NATION RADIO", - Nationradio90s-Dab
+      http://listen-nation.sharp-stream.com/nationradio90s-dab.mp3?ref=RF Title1=nationradio90s-dab.mp3
+      #EXTINF:-1, group-title="NATION RADIO", - Nationradio00sdab
+      http://listen-nation.sharp-stream.com/nationradio00sdab.mp3?ref=RF Title1=nationradio00sdab.mp3
+      #EXTINF:-1, group-title="NATION RADIO", - Nationhitsdab
+      http://listen-nation.sharp-stream.com/nationhitsdab.mp3?ref=RF Title1=nationhitsdab.mp3
+      #EXTINF:-1, group-title="NATION RADIO", - Lovenationdab
+      http://listen-nation.sharp-stream.com/lovenationdab.mp3?ref=RF Title1=lovenationdab.mp3
+      #EXTINF:-1, group-title="Nostalgia", Nostalgie Chansons Françaises
+      http://cdn.nrjaudio.fm/adwz1/fr/30611/mp3_128.mp3
+      #EXTINF:-1, group-title="Nostalgia", Nostalgie Légendes
+      http://cdn.nrjaudio.fm/adwz1/fr/55196/mp3_128.mp3
+      #EXTINF:-1, group-title="Nostalgia", Nostalgie 100 Plus Grandes Chansons
+      http://cdn.nrjaudio.fm/adwz1/fr/30627/mp3_128.mp3
+      #EXTINF:-1, group-title="Nostalgia", Nostalgie 80 Les N°1
+      http://cdn.nrjaudio.fm/adwz1/fr/56726/mp3_128.mp3
+      #EXTINF:-1, group-title="NRJ", NRJ France
+      http://cdn.nrjaudio.fm/audio1/fr/30001/mp3_128.mp3
+      #EXTINF:-1, group-title="NRJ", NRJ Hits
+      http://cdn.nrjaudio.fm/adwz1/fr/30043/mp3_128.mp3
+      #EXTINF:-1, group-title="NRJ", NRJ French Hits
+      http://cdn.nrjaudio.fm/adwz1/fr/30037/mp3_128.mp3
+      #EXTINF:-1, group-title="NRJ", NRJ Acoustic Hits
+      http://cdn.nrjaudio.fm/adwz1/fr/30157/mp3_128.mp3
+      #EXTINF:-1, group-title="NRJ", NRJ Best Hits Ever
+      http://cdn.nrjaudio.fm/adwz1/fr/31251/mp3_128.mp3
+      #EXTINF:-1, group-title="NTS", NTS 1
+      https://stream-relay-geo.ntslive.net/stream?client=direct
+      #EXTINF:-1, group-title="NTS", NTS 2
+      https://stream-relay-geo.ntslive.net/stream2?client=direct
+      #EXTINF:-1, group-title="NTS", NTS Poolside
+      https://stream-mixtape-geo.ntslive.net/mixtape4?client=direct
+      #EXTINF:-1, group-title="NTS", NTS Slow Focus
+      https://stream-mixtape-geo.ntslive.net/mixtape?client=direct
+      #EXTINF:-1, group-title="NTS", NTS Low Key
+      https://stream-mixtape-geo.ntslive.net/mixtape2?client=direct
+      #EXTINF:-1, group-title="NTS", NTS Memory Lane
+      https://stream-mixtape-geo.ntslive.net/mixtape6?client=direct
+      #EXTINF:-1, group-title="NTS", NTS 4 to the Floor
+      https://stream-mixtape-geo.ntslive.net/mixtape5?client=direct
+      #EXTINF:-1, group-title="NTS", NTS Island Time
+      https://stream-mixtape-geo.ntslive.net/mixtape21?client=direct
+      #EXTINF:-1, group-title="NTS", NTS The Tube
+      https://stream-mixtape-geo.ntslive.net/mixtape26?client=direct
+      #EXTINF:-1, group-title="NTS", NTS Sheet Music
+      https://stream-mixtape-geo.ntslive.net/mixtape35?client=direct
+      #EXTINF:-1, group-title="NTS", NTS Feelings
+      https://stream-mixtape-geo.ntslive.net/mixtape27?client=direct
+      #EXTINF:-1, group-title="NTS", NTS Expansions
+      https://stream-mixtape-geo.ntslive.net/mixtape3?client=direct
+      #EXTINF:-1, group-title="NTS", NTS Rap House
+      https://stream-mixtape-geo.ntslive.net/mixtape22?client=direct
+      #EXTINF:-1, group-title="NTS", NTS Labyrinth
+      https://stream-mixtape-geo.ntslive.net/mixtape31?client=direct
+      #EXTINF:-1, group-title="NTS", NTS Sweat
+      https://stream-mixtape-geo.ntslive.net/mixtape24?client=direct
+      #EXTINF:-1, group-title="NTS", NTS Otaku
+      https://stream-mixtape-geo.ntslive.net/mixtape36?client=direct
+      #EXTINF:-1, group-title="NTS", NTS The Pit
+      https://stream-mixtape-geo.ntslive.net/mixtape34?client=direct
+      #EXTINF:-1, group-title="NTS", NTS Field Recordings
+      https://stream-mixtape-geo.ntslive.net/mixtape23?client=direct
+      #EXTINF:-1, group-title="PureClassix", PureClassix
+      http://mscp4.live-streams.nl:8140/flac.ogg
+      #EXTINF:-1, group-title="Radio Paradise", Radio Paradise
+      http://stream.radioparadise.com/mp3-192
+      #EXTINF:-1, group-title="Radio Paradise", - RP GLOBAL
+      http://stream.radioparadise.com/global-flacm
+      #EXTINF:-1, group-title="Radio Paradise", - RP MELLOW
+      http://stream.radioparadise.com/mellow-flacm
+      #EXTINF:-1, group-title="Radio Paradise", - RP ROCK
+      http://stream.radioparadise.com/rock-flacm
+      #EXTINF:-1, group-title="Radio Paradise", - RP MAIN
+      http://stream.radioparadise.com/flacm
+      #EXTINF:-1, group-title="Radio Paradise", - RP BEYOND
+      http://stream.radioparadise.com/beyond-flacm
+      #EXTINF:-1, group-title="Radio Paradise,Radio Paradise 2050
+      http://stream.radioparadise.com/radio2050-flacm
+      #EXTINF:-1, group-title="Radio Paradise,Radio Paradise Serenity
+      http://stream.radioparadise.com/serenity
+      #EXTINF:-1, group-title="Radio Paradise", - NEW CLEAR RADIO
+      http://live.ncradio.fm/320
+      #EXTINF:-1, group-title="Radio Paradise", - NME 1
+      http://listen-nme.sharp-stream.com/nme1high.mp3
+      #EXTINF:-1, group-title="Radio Paradise", - NME 2
+      http://listen-nme.sharp-stream.com/nme2high.mp3
+      #EXTINF:-1, group-title="Radio Paradise", - timewarp ireland
+      http://141.94.205.245:8052/stream
+      #EXTINF:-1, group-title="Radio Paradise", - JB Radio 2
+      http://161.97.135.80:8001/flac
+      #EXTINF:-1, group-title="Radio Paradise", - Radio Caroline
+      http://78.129.202.200:8030/;
+      #EXTINF:-1, group-title="Radio Paradise Flac", Radio Paradise Main Mix FLAC
+      http://stream.radioparadise.com/flacm
+      #EXTINF:-1, group-title="Radio Paradise Flac", Radio Paradise Mellow Mix FLAC
+      http://stream.radioparadise.com/mellow-flacm
+      #EXTINF:-1, group-title="Radio Paradise Flac", Radio Paradise Rock Mix FLAC
+      http://stream.radioparadise.com/rock-flacm
+      #EXTINF:-1, group-title="Radio Paradise Flac", Radio Paradise World/Etc Mix FLAC
+      http://stream.radioparadise.com/world-etc-flacm
+      #EXTINF:-1, group-title="Radio Paradise Flac", "Radio Paradise Mellow Mix
+      http://stream.radioparadise.com/mellow-flacm 11
+      #EXTINF:-1, tvg-logo=https://d1ujqdpfgkvqfi.cloudfront.net/favicon-generator/htdocs/favicons/2021-09-06/ab1cf897abc8e06ed9c1557b028dce66.ico.png, group-title="Rock;World;Italian", "70 80 90 Vibrazioni Rock Radio"
+      https://maggie.torontocast.com:2020/stream/vibrazionirockradio
+      #EXTINF:-1, group-title="Sector", - Sector Space
+      http://89.223.45.5:8000/space-flac
+      #EXTINF:-1, group-title="Sector", - Sector Progressive
+      http://89.223.45.5:8000/progressive-flac
+      #EXTINF:-1, group-title="Sector", Sector Jazz
+      http://89.223.45.5:8000/jazz-flac
+      #EXTINF:-1, group-title="Sector", - Sector Classical
+      http://89.223.45.5:8000/nota-flac
+      #EXTINF:-1, group-title="Sector", - Sector 80s
+      http://89.223.45.5:8000/geny-flac
+      #EXTINF:-1, group-title="Sector", - Sector 90s
+      http://89.223.45.5:8000/next-flac
+      #EXTINF:-1, group-title="Sector", - Sector 00's
+      http://89.223.45.5:8000/indigo-flac
+      #EXTINF:-1, group-title="Sector", - Sector 10s
+      http://89.223.45.5:8000/zed-flac
+      #EXTINF:-1, group-title="Sector", - Intense Radio
+      http://secure.live-streams.nl:80/flac.flac
+      #EXTINF:-1, group-title="SomaFM", Soma FM - Groove Salad
+      http://ice.somafm.com/groovesalad
+      #EXTINF:-1, group-title="SomaFM", Soma FM - Drone Zone
+      http://ice.somafm.com/dronezone
+      #EXTINF:-1, group-title="SomaFM", Soma FM - Indie Pop Rocks
+      http://ice.somafm.com/indiepop
+      #EXTINF:-1, group-title="SomaFM", Soma FM - Space Station Soma
+      http://ice.somafm.com/spacestation
+      #EXTINF:-1, group-title="SomaFM", Soma FM - Secret Agent
+      http://ice.somafm.com/secretagent
+      #EXTINF:-1, group-title="SomaFM", Soma FM - Deep Space One
+      http://ice.somafm.com/deepspaceone
+      #EXTINF:-1, group-title="SomaFM", Soma FM - Groove Salad Classic
+      http://ice.somafm.com/gsclassic
+      #EXTINF:-1, group-title="SomaFM", Soma FM - Lush
+      http://ice.somafm.com/lush
+      #EXTINF:-1, group-title="SomaFM", Soma FM - Underground 80s
+      http://ice.somafm.com/u80s
+      #EXTINF:-1, group-title="SomaFM", Soma FM - BAGeL Radio
+      http://ice.somafm.com/bagel
+      #EXTINF:-1, group-title="SomaFM", Soma FM - Left Coast 70s
+      http://ice.somafm.com/seventies
+      #EXTINF:-1, group-title="SomaFM", Soma FM - DEF CON Radio
+      http://ice.somafm.com/defcon
+      #EXTINF:-1, group-title="SomaFM", Soma FM - Folk Forward
+      http://ice.somafm.com/folkfwd
+      #EXTINF:-1, group-title="SomaFM", Soma FM - Suburbs of Goa
+      http://ice.somafm.com/suburbsofgoa
+      #EXTINF:-1, group-title="SomaFM", Soma FM - ThistleRadio
+      http://ice.somafm.com/thistle
+      #EXTINF:-1, group-title="SomaFM", Soma FM - The Trip
+      http://ice.somafm.com/thetrip
+      #EXTINF:-1, group-title="SomaFM", - SOMA FOLK
+      http://ice2.somafm.com/folkfwd-128-aac
+      #EXTINF:-1, group-title="SomaFM", - Soma Groove Salad Flac HLS
+      https://hls.somafm.com/hls/groovesalad/FLAC/program.m3u8
+      #EXTINF:-1, group-title="SomaFM", - Soma Groove Salad Flac HLS Unprocessed
+      https://hls.somafm.com/hls/gs-unprocessed/FLAC/program.m3u8
+      #EXTINF:-1, group-title="SomaFM", - Soma Groove Salad 320k AAC Stereo
+      https://hls.somafm.com/hls/groovesalad/320k/program.m3u8
+      #EXTINF:-1, group-title="SomaFM", - Soma Groove Salad 320k AAC Surround
+      https://hls.somafm.com/hls/gs-surround/program.m3u8
+      #EXTINF:-1, group-title="SomaFM", - SOMA REGGAE
+      http://ice6.somafm.com/reggae-256-mp3
+      #EXTINF:-1, group-title="SomaFM", - SOMA 70s
+      http://ice4.somafm.com/seventies-320-mp3
+      #EXTINF:-1, group-title="SomaFM", - SOMA 80s
+      http://ice6.somafm.com/u80s-256-mp3
+      #EXTINF:-1, group-title="SomaFM", - SOMA COUNTRY
+      http://ice2.somafm.com/bootliquor-320-mp3
+      #EXTINF:-1, group-title="SomaFM", - SOMA LUSH
+      http://ice5.somafm.com/lush-128-aac
+      #EXTINF:-1, group-title="SomaFM", - SOMA COVERS
+      http://ice4.somafm.com/covers-128-aac
+      #EXTINF:-1, group-title="SomaFM", - SOMA INDIE
+      http://ice4.somafm.com/indiepop-128-aac
+      #EXTINF:-1, group-title="SomaFM", - SOMA CELTIC
+      http://ice6.somafm.com/thistle-128-aac
+      #EXTINF:-1, group-title="SomaFM", - SOMA DUB
+      http://ice1.somafm.com/dubstep-128-aac
+      #EXTINF:-1, group-title="SomaFM", - SOMA Seven Inch Soul
+      http://ice4.somafm.com/7soul-128-aac
+      #EXTINF:-1, group-title="SomaFM", - Soma The In-Sound
+      http://ice4.somafm.com/insound-256-mp3
+      #EXTINF:-1, group-title="SomaFM", SomaFM - Soma Bossa Beyond
+      http://ice2.somafm.com/bossa-256-mp3
+      #EXTINF:-1, group-title="SomaFM", SomaFM - Soma Tiki Time
+      http://ice6.somafm.com/tikitime-256-mp3
+      #EXTINF:-1, group-title="SomaFM", SomaFM - Soma DEF CON Radio
+      http://ice2.somafm.com/defcon-256-mp3
+      #EXTINF:-1, group-title="SomaFM", SomaFM - Soma Synphaera Radio
+      http://ice6.somafm.com/synphaera-256-mp3
+      #EXTINF:-1, group-title="SomaFM", SomaFM - Soma Drone Zone
+      http://ice2.somafm.com/dronezone-256-mp3
+      #EXTINF:-1, group-title="SomaFM", SomaFM - SomaThe Dark Zone
+      http://ice2.somafm.com/darkzone-256-mp3
+      #EXTINF:-1, group-title="SomaFM", SomaFM - Soma Sonic Universe
+      http://ice6.somafm.com/sonicuniverse-256-mp3
+      #EXTINF:-1, group-title="Sputnik", Radio Sputnik (Underground House)
+      http://radiosputnik.nl:8002/flac
+      #EXTINF:-1, group-title="Sputnik", - Radio Sputnik
+      https://radiosputnik.nl:8443/flac
+      #EXTINF:-1, group-title="SUPERSTEREO Music", SuperStereo 1 eighties (Chile) (flac 24/96)
+      http://198.204.228.202:8160/flac 17
+      #EXTINF:-1, group-title="SUPERSTEREO Music", SuperStereo 2 oldies (Chile) (flac 24/96)
+      http://198.204.228.202:8157/flac 10
+      #EXTINF:-1, group-title="SUPERSTEREO Music", SuperStereo 3 disco/pop (Chile) (flac 24/96)
+      http://198.204.228.202:8539/flac 3
+      #EXTINF:-1, group-title="SUPERSTEREO Music", SuperStereo 4 easy listening (Chile) (flac 24/96)
+      http://198.204.228.202:8030/flac 9
+      #EXTINF:-1, group-title="SUPERSTEREO Music", SuperStereo 5 rock&South American (Chile) (flac 24/96)
+      http://198.204.228.202:8643/flac5 10
+      #EXTINF:-1, group-title="SUPERSTEREO Music", SuperStereo 6 instrumental (Chile) (flac 24/96)
+      http://198.204.228.202:8157/flac6 11
+      #EXTINF:-1, group-title="SUPERSTEREO Music", SuperStereo 1 eighties (Chile) (flac 24/192 test)
+      http://ingest-mia.radiomast.io/8a760c25-fb95-4fcb-9c0e-ca0f269a7360 17
+      #EXTINF:-1, group-title="SUPERSTEREO Music", "Timewarp Ireland (Waterford, Ireland) (mp3/192)"
+      http://stream1.themediasite.co.uk/8050/stream 7
+      #EXTINF:-1, group-title="SUPERSTEREO Music", SuperStereo 1 80s
+      http://198.204.228.202:8160/flac
+      #EXTINF:-1, group-title="SUPERSTEREO Music", SuperStereo 2 – Oldies
+      http://198.204.228.202:8157/flac
+      #EXTINF:-1, group-title="SUPERSTEREO Music", pop and dance
+      http://198.204.228.202:8539/flac
+      #EXTINF:-1, group-title="SUPERSTEREO Music", Easy Listening
+      http://198.204.228.202:8030/flac
+      #EXTINF:-1, group-title="SUPERSTEREO Music", JB Radio Net
+      https://maggie.torontocast.com:8076/flac
+      #EXTINF:-1, group-title="SUPERSTEREO Music", Mother Earth Radio
+      http://server9.streamserver24.com:18900/motherearth
+      #EXTINF:-1, group-title="SUPERSTEREO Music", 95bFM
+      http://streams.95bfm.com/stream112.m3u
+      #EXTINF:-1, group-title="SUPERSTEREO Music", The Cheese
+      http://thecheese.ddns.net:8004/stream.m3u
+      #EXTINF:-1, group-title="SUPERSTEREO Music", Insanity Radio
+      http://stream.cor.insanityradio.com/insanity_unprocessed.flac
+      #EXTINF:-1, group-title="SUPERSTEREO Music", Magic-Radio
+      http://mp3.magic-radio.net/flac
+      #EXTINF:-1, group-title="SUPERSTEREO Music", RadioBlues
+      https://streams.radiomast.io/radioblues-flac
+      #EXTINF:-1, group-title="SUPERSTEREO Music", Chill Out Zone Plus
+      https://chillout.zone/chillout_plus
+      #EXTINF:-1, group-title="SUPERSTEREO Music", Chill In Zone - Hi On Line
+      http://mscp2.live-streams.nl:8100/flac.flac
+      #EXTINF:-1, group-title="SUPERSTEREO Music", Klasu Pro (Classical)
+      http://rondo.iradio.fi:8000/klasupro.flac
+      #EXTINF:-1, group-title="SUPERSTEREO Music", Intense Radio (Dance)
+      https://secure.live-streams.nl/flac.flac
+      #EXTINF:-1, group-title="SUPERSTEREO Music", Chill Out Zone Plus (Chillout)
+      https://chillout.zone/chillout_plus
+      #EXTINF:-1, group-title="SUPERSTEREO Music", "Ambient, Dub Techno)"
+      http://icecast.zog.net.au:8000/source
+      #EXTINF:-1, group-title="SUPERSTEREO Music", Sing Sing (Eclectic)
+      http://stream.sing-sing-bis.org:8000/singsingFlac
+      #EXTINF:-1, group-title="SUPERSTEREO Music", Magic Radio (Oldies Hits)
+      http://mp3.magic-radio.net/flac
+      #EXTINF:-1, group-title="SUPERSTEREO Music", Sector Radio Progressive (Electronic)
+      http://89.223.45.5:8000/progressive-flac
+      #EXTINF:-1, group-title="SUPERSTEREO Music", Sector Radio Space (Electronic)
+      http://89.223.45.5:8000/space-flac
+      #EXTINF:-1, group-title="SUPERSTEREO Music", Sector Radio Classical (Classical)
+      http://89.223.45.5:8000/nota-flac
+      #EXTINF:-1, group-title="SUPERSTEREO Music", Sector Radio 80s (80s)
+      http://89.223.45.5:8000/geny-flac
+      #EXTINF:-1, group-title="SUPERSTEREO Music", Sector Radio 90s (90s)
+      http://89.223.45.5:8000/next-flac
+      #EXTINF:-1, group-title="SUPERSTEREO Music", Sector Radio 10s (10s)
+      http://stream.sectorradio.ru:8000/zed-flac
+      #EXTINF:-1, group-title="SUPERSTEREO Music", Fréquence 3 (Rock/Electronic Dance Music)
+      http://master.net-radio.fr/frequence3.flac
+      #EXTINF:-1, group-title="SUPERSTEREO Music", Rap and R’n’B)
+      http://ice1.ikoula.net-radio.fr/frequence3urban.flac
+      #EXTINF:-1, group-title="SUPERSTEREO Music", Czech Radio ČRo D-dur (Classical)
+      http://amp.cesnet.cz:8000/cro-d-dur.flac
+      #EXTINF:-1, group-title="SUPERSTEREO Music", Czech Radio ČRo Radio Wave (Young Listeners)
+      http://amp.cesnet.cz:8000/cro-radio-wave.flac
+      #EXTINF:-1, group-title="SWLondong,- 107.8 Radio Jackie Finesse - The Sound of South West London
+      http://media.radiojackie.com:5873/;
+      #EXTINF:-1, group-title="Talksport", - Talksport
+      http://radio.talksport.com/stream
+      #EXTINF:-1, group-title="Talksport", - Talksport 2
+      http://radio.talksport.com/stream2
+      #EXTINF:-1, group-title="VIBE RADIO", - Deepvibes Radio
+      http://88.208.218.19:9106/stream
+      #EXTINF:-1, group-title="VIBE RADIO", - PARTY VIBE RADIO : POP
+      http://94.130.242.5:8024/stream
+      #EXTINF:-1, group-title="VIBE RADIO", - PARTY VIBE RADIO :  ALTERNATIVE ROCK
+      http://94.130.242.5:8032/stream
+      #EXTINF:-1, group-title="VIBE RADIO", - PARTY VIBE RADIO : DRUM & BASS
+      http://94.130.242.5:8004/stream
+      #EXTINF:-1, group-title="VIBE RADIO,PARTY VIBE RADIO :  JAZZ
+      http://94.130.242.5:8020/stream
+      #EXTINF:-1, group-title="VIBE RADIO", - PARTY VIBE RADIO : RAP
+      http://94.130.242.5:8016/stream
+      #EXTINF:-1, group-title="VIBE RADIO", - PARTY VIBE RADIO : TECHNO
+      http://94.130.242.5:8046/stream
+      #EXTINF:-1, group-title="VIBE RADIO", - PARTY VIBE RADIO : DUBSTEP
+      http://94.130.242.5:8040/stream
+      #EXTINF:-1, group-title="VIBE RADIO", - PARTY VIBE RADIO : FULL ON PSYTRANCE
+      http://94.130.242.5:8010/stream
+      #EXTINF:-1, group-title="VIBE RADIO", - PARTY VIBE RADIO : AMBIENT
+      http://94.130.242.5:8056/stream
+      #EXTINF:-1, group-title="VIBE RADIO", - PARTY VIBE RADIO : REGGAE
+      http://94.130.242.5:8000/stream
+      #EXTINF:-1, group-title="VIBE RADIO", - Radio Monique 963 Gold
+      https://happy.radiocaroline319.nl/listen/caroline_oldies/radio320.mp3
+      #EXTINF:-1, group-title="VIBE RADIO", - Tophits
+      http://tophits.radiomonster.fm/320.mp3
+      #EXTINF:-1, group-title="VIBE RADIO", - Evergreens
+      http://evergreens.radiomonster.fm/320.mp3
+      #EXTINF:-1, group-title="VIBE RADIO", - RadioMonster.FM Dance
+      http://dance.radiomonster.fm/320.mp3
+      #EXTINF:-1, group-title="VIBE RADIO", - RadioMonster.FM Schlager
+      http://schlager.radiomonster.fm/320.mp3
+      #EXTINF:-1, group-title="VIBE RADIO", - Riverside Radio
+      https://stream.and-stuff.nl:8443/riverside
+      #EXTINF:-1, group-title="VIBE RADIO", - Folkalley-128mp3
+      http://freshgrass.streamguys1.com/folkalley-128mp3
+      #EXTINF:-1, group-title="VIBE RADIO", - Freshcuts-128mp3
+      http://freshgrass.streamguys1.com/freshcuts-128mp3
+      #EXTINF:-1, group-title="VIBE RADIO", - Classic Folk
+      http://freshgrass.streamguys1.com/ss1-128mp3
+      #EXTINF:-1, group-title="VIBE RADIO", - Centre Force
+      http://centreforce.streamgb.com:8830/320
+      #EXTINF:-1, group-title="VIBE RADIO", - EasyRadio
+      http://live.easyradio.bg/flac
+      #EXTINF:-1, group-title="VIBE RADIO", - Grollooradio
+      https://uk1.streamingpulse.com/ssl/grollooradio
+      #EXTINF:-1, group-title="VIBE RADIO,"- FM 90.7 Blacksburg, VA"
+      http://stream.wuvt.vt.edu/wuvt-hq.aac
+      #EXTINF:-1, group-title="VIBE RADIO", - Evasion75
+      http://rnt.hpi.fr/evasion75
+      #EXTINF:-1, group-title="VIBE RADIO", - Kronehit-Ultra-Hd
+      https://secureonair.krone.at/kronehit-ultra-hd.aac
+      #EXTINF:-1, group-title="VIBE RADIO", - Lovely
+      http://rnt.hpi.fr/Lovely
+      #EXTINF:-1, group-title="VIBE RADIO", - 1 Plius
+      http://radio.m-1.fm/m1plius/aacp320
+      #EXTINF:-1, group-title="VIBE RADIO", - Mbs
+      http://rnt.hpi.fr/mbs
+      #EXTINF:-1, group-title="VIBE RADIO", - 70 80s hq hits
+      http://91.121.104.139:9280/
+      #EXTINF:-1, group-title="VIBE RADIO", - Dance Wave Flac
+      http://dancewave.online/dance.flac.ogg
+      #EXTINF:-1, group-title="VIBE RADIO", - Retrodance Flac
+      http://retro.dancewave.online/retrodance.flac.ogg
+      #EXTINF:-1, group-title="VIBE RADIO", - Joyhits Flac
+      http://joyhits.online/joyhits.flac.ogg
+      #EXTINF:-1, group-title="VIBE RADIO", - BDPST ROCK Radio
+      http://s2.audiostream.hu:8091/bdpstrock_FLAC
+      #EXTINF:-1, group-title="VIBE RADIO", - Danubius Radio
+      http://stream.danubiusradio.hu:8091/danubius_HiFi
+      #EXTINF:-1, group-title="VIBE RADIO", - Radio Juventus
+      http://s2.audiostream.hu:8090/juventus_FLAC
+      #EXTINF:-1, group-title="VIBE RADIO", - PureClassix
+      http://mscp4.live-streams.nl:8140/flac.ogg
+      #EXTINF:-1, group-title="VIBE RADIO", - Sputnik techno radio
+      http://radiosputnik.nl:8002/flac
+      #EXTINF:-1, group-title="VIBE RADIO", - Radio X
+      https://mp3.radiox.ch/standard.ogg
+      #EXTINF:-1, group-title="VIBE RADIO", - OpenSky radio
+      https://audio.opensky.radio:8082/flac?_res_tag_=audio
+      #EXTINF:-1, group-title="VIBE RADIO", - La SuperSonica
+      http://c11.radioboss.fm:8093/stream
+      #EXTINF:-1, group-title="VIBE RADIO", - Zappa Stream Radio
+      https://streams.norbert.de/zappa.flac
+      #EXTINF:-1, group-title="VIBE RADIO", - Pi Ano
+      http://stream.p-node.org/piano
+      #EXTINF:-1, group-title="VIBE RADIO", - Ambient Radio .org
+      http://uk2.internet-radio.com:8171/stream
+      #EXTINF:-1, group-title="VIBE RADIO", - LapFox Radio
+      https://radio.lapfoxradio.com/radio/8000/stream-flac.flac
+      #EXTINF:-1, group-title="VIBE RADIO", - Le Son Parisien
+      http://stream.lesonparisien.com/live.flac
+      #EXTINF:-1, group-title="VIBE RADIO", - Punkrockers Radio
+      https://stream.punkrockers-radio.de:8443/prr.flac
+      #EXTINF:-1, group-title="VIBE RADIO", - Absolutely Top
+      http://cdn05.radio.cloud:8120/ATD-OMNIA-GAT
+      #EXTINF:-1, group-title="VIBE RADIO", - Scenesat
+      http://oscar.scenesat.com:8000/scenesatmax
+      #EXTINF:-1, group-title="VIBE RADIO", - Sanctuary 80s
+      http://66.94.113.88:8000/retro_ultra_hq
+      #EXTINF:-1, group-title="VIBE RADIO", - Forever Bordeaux
+      http://stream.sweetfm.fr:8000/flac-forever-bdx
+      #EXTINF:-1, group-title="VIBE RADIO", - 45 Radio
+      http://stream3.themediasite.co.uk:8134/stream
+      #EXTINF:-1, group-title="Virgin Radio", Virgin Radio
+      http://ais-live.cloud-services.paris:8000/virgin.mp3
+      #EXTINF:-1, group-title="WCRB", - WCRB
+      http://wgbh.streamguys.com:80/wcrb-omnia
+
+
+  # 2. Python playlist generator script
+  generate-playlists:
+    content: |
+      import re
+      import pathlib
+      import sys
+      from collections import defaultdict
+
+      group_re = re.compile(r'group-title="([^"]*)"')
+
+      def parse_extinf(line):
+          group_match = group_re.search(line)
+          group = group_match.group(1) if group_match else "Unknown"
+          name = line.rsplit(",",1)[-1].strip()
+          return group, name
+
+      def safe_string(s):
+          s = re.sub(r'[^\w\s-]', '', s)
+          s = s.strip().replace(' ', '_')
+          # remove leading junk like "-" "_"
+          s = s.lstrip("-_")
+          return s
+
+      def generate(input_file, output_dir):
+          groups = defaultdict(set)
+          with open(input_file) as f:
+              lines = iter(f)
+              for line in lines:
+                  if line.startswith("#EXTINF"):
+                      group, name = parse_extinf(line)
+                      url = next(lines).strip()
+                      # Skip garbage entries
+                      bad_prefixes_raw = ("group-title", "tvg")
+                      if name.lower().startswith(bad_prefixes_raw):
+                        continue
+                      groups[group].add((name, url))
+          base = pathlib.Path(output_dir)
+          base.mkdir(exist_ok=True)
+
+          for group, stations in groups.items():
+              safe_group = safe_string(group)
+              group_dir = base / safe_group
+              group_dir.mkdir(exist_ok=True)
+              for name, url in sorted(stations):
+                  safe_name = safe_string(name)
+                  # Skip bad filenames
+                  if safe_name.lower().startswith("grouptitle"):
+                      continue
+                  target = group_dir / f"{safe_name}.m3u"
+
+                  with open(target,"w") as f:
+                      f.write("#EXTM3U\n")
+                      f.write(f"#EXTINF:-1,{name}\n")
+                      f.write(url+"\n")
+
+      if __name__ == "__main__":
+          generate(sys.argv[1],sys.argv[2])
+
+  # 3. Gerbera DLNA config
+  gerbera-conf:
+    content: |
+      <config xmlns="http://gerbera.org/config" version="1">
+        <server>
+          <friendlyName>My Radio</friendlyName>
+          <uuid>12345678-90ab-cdef-1234-567890abcdef</uuid>
+          <port>8200</port>
+
+          <home>/var/lib/gerbera</home>
+          <storage>
+            <sqlite3 enabled="yes">
+              <database-file>gerbera.db</database-file>
+            </sqlite3>
+          </storage>
+        </server>
+
+        <ui enabled="yes">
+          <ip>0.0.0.0</ip>
+          <port>49152</port>
+        </ui>
+
+        <import>
+          <autoscan>
+            <directory location="/mnt/content" mode="inotify" recursive="yes"/>
+           </autoscan>
+        </import>
+      </config>
+
