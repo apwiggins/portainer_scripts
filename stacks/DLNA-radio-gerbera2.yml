@@ -1,0 +1,433 @@
+---
+## a simplified M3U (non-standard) to provide some human-readable groups.
+
+# add a custom header line followed by a simplified EXTINF line and the URL link
+# below an embedded python script decodes the groups and creates a separate M3U
+# for each group.  For DLNA, this creates separate folders which makes DLNA
+# browsing simpler for very large lists
+
+#      # --- GROUP: Linn Radio ---
+#      #EXTINF:-1, Linn Classical
+#      http://89.16.185.174:8004/stream
+#      #EXTINF:-1, Linn Jazz
+#      http://89.16.185.174:8000/stream
+#      #EXTINF:-1, Linn Radio
+#      http://89.16.185.174:8003/stream
+
+#  Serve a large list of radio stations through DLNA
+
+services:
+  # -------------------------
+  # Python playlist generator
+  # -------------------------
+  playlist-generator:
+    image: python:3.12-slim
+    container_name: playlist-generator
+    volumes:
+      - radio-playlists:/app/playlists
+    configs:
+      - source: radio-stations
+        target: /app/radio_stations.m3u
+      - source: generate-playlists
+        target: /app/generate_playlists.py
+    command: >
+      sh -c "while true; do
+               python3 /app/generate_playlists.py /app/radio_stations.m3u /app/playlists
+               sleep 3600
+             done"
+    restart: unless-stopped
+
+  # -------------------------
+  # Gerbera DLNA server
+  # -------------------------
+  gerbera:
+    image: gerbera/gerbera:3.0.0
+    container_name: gerbera
+    network_mode: host
+    volumes:
+      - radio-playlists:/mnt/content
+      - gerbera-data:/var/lib/gerbera
+
+    configs:
+      - source: gerbera-conf
+        target: /var/lib/gerbera/config.xml
+    restart: unless-stopped
+
+volumes:
+  radio-playlists:
+  gerbera-data:
+
+# -------------------------
+# Embedded configs
+# -------------------------
+configs:
+
+  # 1. Radio stations (Standard M3U format, but with custom human readable groups # --- GROUP: Chérie FM ---)
+  # Python script below the following list will decode custom groups to separate .m3u
+  radio-stations:
+    content: |
+      #EXTM3U
+      #EXTINF:-1,Radio Paradise
+      http://stream.radioparadise.com/mp3-192
+      #EXTINF:-1,Classic FM
+      http://media-ice.musicradio.com/ClassicFMMP3
+      #EXTINF:-1,BBC Radio 1
+      http://bbcmedia.ic.llnwd.net/stream/bbcmedia_radio1_mf_p
+      #EXTINF:-1 tvg-logo="https://ca.radio.net/images/broadcasts/66/67/40992/1/c300.png" group-title="Alternative;Rock",1 Pure Alternative Radio
+      https://jenny.torontocast.com:2000/stream/1purealternativeradio/stream
+      #EXTINF:-1 tvg-logo="https://static.mytuner.mobi/media/tvos_radios/faa3fcf9adhd.jpg" group-title="EDM;Dance",1 Pure EDM Radio
+      https://maggie.torontocast.com:2020/stream/1pureedmradio
+      #EXTINF:-1 tvg-logo="https://d1ujqdpfgkvqfi.cloudfront.net/favicon-generator/htdocs/favicons/2021-09-06/6c0563a4bb439ddd885e690af1987ba3.ico.png" group-title="World;Italian;Folk",70 80 90 Italia D'Autore
+      https://maggie.torontocast.com:2020/stream/708090italiadautore
+      #EXTINF:-1 tvg-logo="https://d1ujqdpfgkvqfi.cloudfront.net/favicon-generator/htdocs/favicons/2021-09-06/ab1cf897abc8e06ed9c1557b028dce66.ico.png" group-title="Rock;World;Italian",70 80 90 Vibrazioni Rock Radio
+      https://maggie.torontocast.com:2020/stream/vibrazionirockradio
+      # --- GROUP: Chérie FM ---
+      #EXTINF:-1, Chérie FM
+      http://cdn.nrjaudio.fm/audio1/fr/30201/mp3_128.mp3
+      #EXTINF:-1, Chérie Acoustic
+      http://cdn.nrjaudio.fm/adwz1/fr/30269/mp3_128.mp3
+      #EXTINF:-1, Chérie Cœur Brisé
+      http://cdn.nrjaudio.fm/adwz1/fr/56303/mp3_128.mp3
+      #EXTINF:-1, Chérie Frenchy
+      http://cdn.nrjaudio.fm/adwz1/fr/30213/mp3_128.mp3
+      #EXTINF:-1, Chérie Love Songs
+      http://cdn.nrjaudio.fm/adwz1/fr/30207/mp3_128.mp3
+      #EXTINF:-1, Chérie 80's
+      http://cdn.nrjaudio.fm/adwz1/fr/30237/mp3_128.mp3
+      #EXTINF:-1, Chérie 90's
+      http://cdn.nrjaudio.fm/adwz1/fr/30239/mp3_128.mp3
+      # --- GROUP: NRJ ---
+      #EXTINF:-1, NRJ France
+      http://cdn.nrjaudio.fm/audio1/fr/30001/mp3_128.mp3
+      #EXTINF:-1, NRJ Hits
+      http://cdn.nrjaudio.fm/adwz1/fr/30043/mp3_128.mp3
+      #EXTINF:-1, NRJ French Hits
+      http://cdn.nrjaudio.fm/adwz1/fr/30037/mp3_128.mp3
+      #EXTINF:-1, NRJ Acoustic Hits
+      http://cdn.nrjaudio.fm/adwz1/fr/30157/mp3_128.mp3
+      #EXTINF:-1, NRJ Best Hits Ever
+      http://cdn.nrjaudio.fm/adwz1/fr/31251/mp3_128.mp3
+      # --- GROUP: Nostalgia ---
+      #EXTINF:-1, Nostalgie Chansons Françaises
+      http://cdn.nrjaudio.fm/adwz1/fr/30611/mp3_128.mp3
+      #EXTINF:-1, Nostalgie Légendes
+      http://cdn.nrjaudio.fm/adwz1/fr/55196/mp3_128.mp3
+      #EXTINF:-1, Nostalgie 100 Plus Grandes Chansons
+      http://cdn.nrjaudio.fm/adwz1/fr/30627/mp3_128.mp3
+      #EXTINF:-1, Nostalgie 80 Les N°1
+      http://cdn.nrjaudio.fm/adwz1/fr/56726/mp3_128.mp3
+      # --- GROUP: France Bleu ---
+      #EXTINF:-1, France Bleu Périgord
+      http://direct.francebleu.fr/live/fbperigord-midfi.mp3
+      # --- GROUP: Virgin Radio ---
+      #EXTINF:-1, Virgin Radio
+      http://ais-live.cloud-services.paris:8000/virgin.mp3
+      # --- GROUP: 100% Radio ---
+      #EXTINF:-1, 100% Radio - Carcassonne
+      http://100radio-carcassonne.ice.infomaniak.ch/100radio-carcassonne-128.mp3
+      # --- GROUP: SomaFM ---
+      #EXTINF:-1, Soma FM - Groove Salad: A nicely chilled plate of ambient/downtempo beats and grooves.
+      http://ice.somafm.com/groovesalad
+      #EXTINF:-1, Soma FM - Drone Zone: Served best chilled, safe with most medications. Atmospheric textures with minimal beats.
+      http://ice.somafm.com/dronezone
+      #EXTINF:-1, Soma FM - Indie Pop Rocks!: New and classic favorite indie pop tracks.
+      http://ice.somafm.com/indiepop
+      #EXTINF:-1, Soma FM - Space Station Soma: Tune in, turn on, space out. Spaced-out ambient and mid-tempo electronica.
+      http://ice.somafm.com/spacestation
+      #EXTINF:-1, Soma FM - Secret Agent: The soundtrack for your stylish, mysterious, dangerous life. For Spies and PIs too!
+      http://ice.somafm.com/secretagent
+      #EXTINF:-1, Soma FM - Deep Space One: Deep ambient electronic, experimental and space music. For inner and outer space exploration.
+      http://ice.somafm.com/deepspaceone
+      #EXTINF:-1, Soma FM - Groove Salad Classic: The classic (early 2000s) version of a nicely chilled plate of ambient/downtempo beats and grooves.
+      http://ice.somafm.com/gsclassic
+      #EXTINF:-1, Soma FM - Lush: Sensuous and mellow vocals, mostly female, with an electronic influence.
+      http://ice.somafm.com/lush
+      #EXTINF:-1, Soma FM - Underground 80s: Early 80s UK Synthpop and a bit of New Wave.
+      http://ice.somafm.com/u80s
+      #EXTINF:-1, Soma FM - BAGeL Radio: What alternative rock radio should sound like. [explicit]
+      http://ice.somafm.com/bagel
+      #EXTINF:-1, Soma FM - Left Coast 70s: Mellow album rock from the Seventies. Yacht not required.
+      http://ice.somafm.com/seventies
+      #EXTINF:-1, Soma FM - DEF CON Radio: Music for Hacking. The DEF CON Year-Round Channel.
+      http://ice.somafm.com/defcon
+      #EXTINF:-1, Soma FM - Folk Forward: Indie Folk, Alt-folk and the occasional folk classics.
+      http://ice.somafm.com/folkfwd
+      #EXTINF:-1, Soma FM - Suburbs of Goa: Desi-influenced Asian world beats and beyond.
+      http://ice.somafm.com/suburbsofgoa
+      #EXTINF:-1, Soma FM - ThistleRadio: Exploring music from Celtic roots and branches
+      http://ice.somafm.com/thistle
+      #EXTINF:-1, Soma FM - The Trip: Progressive house / trance. Tip top tunes.
+      http://ice.somafm.com/thetrip
+
+      # --- GROUP: Radio Paradise Flac ---
+      #EXTINF:-1, Radio Paradise Main Mix FLAC
+      http://stream.radioparadise.com/flacm
+      #EXTINF:-1, Radio Paradise Mellow Mix FLAC
+      http://stream.radioparadise.com/mellow-flacm
+      #EXTINF:-1, Radio Paradise Rock Mix FLAC
+      http://stream.radioparadise.com/rock-flacm
+      #EXTINF:-1, Radio Paradise World/Etc Mix FLAC
+      http://stream.radioparadise.com/world-etc-flacm
+
+      # --- GROUP: International ---
+      #EXTINF:-1, JB Radio 2 FLAC
+      http://stream.jbradio2.ca:8888/flac
+      #EXTINF:-1, JB Radio 2 MP3 320
+      http://cristina.torontocast.com:8007/mp3-320
+      #EXTINF:-1, JB Radio-2 - High Resolution Audio
+      http://199.189.87.9:10999/flac.m3u
+
+      # --- GROUP: Linn Radio ---
+      #EXTINF:-1, Linn Classical
+      http://89.16.185.174:8004/stream
+      #EXTINF:-1, Linn Jazz
+      http://89.16.185.174:8000/stream
+      #EXTINF:-1, Linn Radio
+      http://89.16.185.174:8003/stream
+
+      # --- GROUP: KCRW ---
+      #EXTINF:-1, KCRW
+      http://media.kcrw.com/pls/kcrwsimulcast.pls
+      #EXTINF:-1, KCRW Eclectic 24
+      http://media.kcrw.com/pls/kcrwmusic.pls
+      #EXTINF:-1, KCRW News 24
+      http://media.kcrw.com/pls/kcrwnews.pls
+      #EXTINF:-1, KCRW Santa Barbara
+      http://media.kcrw.com/pls/kcrwsantabarbara.pls
+
+      # --- GROUP: SUPERSTEREO Music ---
+      #EXTINF:-1,SuperStereo 1 eighties (Chile) (flac 24/96)
+      http://198.204.228.202:8160/flac 17
+      #EXTINF:-1,SuperStereo 2 oldies (Chile) (flac 24/96)
+      http://198.204.228.202:8157/flac 10
+      #EXTINF:-1,SuperStereo 3 disco/pop (Chile) (flac 24/96)
+      http://198.204.228.202:8539/flac 3
+      #EXTINF:-1,SuperStereo 4 easy listening (Chile) (flac 24/96)
+      http://198.204.228.202:8030/flac 9
+      #EXTINF:-1,SuperStereo 5 rock&South American (Chile) (flac 24/96)
+      http://198.204.228.202:8643/flac5 10
+      #EXTINF:-1,SuperStereo 6 instrumental (Chile) (flac 24/96)
+      http://198.204.228.202:8157/flac6 11
+      #EXTINF:-1,SuperStereo 1 eighties (Chile) (flac 24/192 test)
+      http://ingest-mia.radiomast.io/8a760c25-fb95-4fcb-9c0e-ca0f269a7360 17
+      #EXTINF:-1,Timewarp Ireland (Waterford, Ireland) (mp3/192)
+      http://stream1.themediasite.co.uk/8050/stream 7
+      #EXTINF:-1,Radio Paradise Mellow Mix (New York, USA) (flac 16/44.1)
+      http://stream.radioparadise.com/mellow-flacm 11
+      #EXTINF:-1,PureClassix (Netherlands) (flac 16/48)
+      http://mscp4.live-streams.nl:8140/flac.ogg
+      #EXTINF:SuperStereo 1 80s
+      http://198.204.228.202:8160/flac
+      #EXTINF:SuperStereo 2 – Oldies
+      http://198.204.228.202:8157/flac
+      #EXTINF:SuperStereo 3 – Disco music, pop and dance
+      http://198.204.228.202:8539/flac
+      #EXTINF:SuperStereo 4 – Soft music, Easy Listening
+      http://198.204.228.202:8030/flac
+      #EXTINF:JB Radio Net
+      https://maggie.torontocast.com:8076/flac
+      #EXTINF:Mother Earth Radio
+      http://server9.streamserver24.com:18900/motherearth
+      #EXTINF:95bFM
+      http://streams.95bfm.com/stream112.m3u
+      #EXTINF:The Cheese
+      http://thecheese.ddns.net:8004/stream.m3u
+      #EXTINF:Insanity Radio
+      http://stream.cor.insanityradio.com/insanity_unprocessed.flac
+      #EXTINF:Magic-Radio
+      http://mp3.magic-radio.net/flac
+      #EXTINF:RadioBlues
+      https://streams.radiomast.io/radioblues-flac
+      #EXTINF:Naim Radio
+      http://mscp3.live-streams.nl:8360/flac.flac
+      #EXTINF:Naim JAazz
+      http://mscp3.live-streams.nl:8340/jazz-flac.flac
+      #EXTINF:Naim Classical
+      http://mscp3.live-streams.nl:8250/class-flac.flac
+      #EXTINF:Chill Out Zone Plus
+      https://chillout.zone/chillout_plus
+      #EXTINF:Chill In Zone - Hi On Line
+      http://mscp2.live-streams.nl:8100/flac.flac
+      #EXTINF:Klasu Pro (Classical)
+      http://rondo.iradio.fi:8000/klasupro.flac
+      #EXTINF:Intense Radio (Dance)
+      https://secure.live-streams.nl/flac.flac
+      #EXTINF:Chill Out Zone Plus (Chillout)
+      https://chillout.zone/chillout_plus
+      #EXTINF:Zog Radio (Techno, Ambient, Dub Techno)
+      http://icecast.zog.net.au:8000/source
+      #EXTINF:Sing Sing (Eclectic)
+      http://stream.sing-sing-bis.org:8000/singsingFlac
+      #EXTINF:Radio Sputnik (Underground House)
+      http://radiosputnik.nl:8002/flac
+      #EXTINF:Magic Radio (Oldies Hits)
+      http://mp3.magic-radio.net/flac
+      #EXTINF:Sector Radio Progressive (Electronic)
+      http://89.223.45.5:8000/progressive-flac
+      #EXTINF:Sector Radio Space (Electronic)
+      http://89.223.45.5:8000/space-flac
+      #EXTINF:Sector Radio Classical (Classical)
+      http://89.223.45.5:8000/nota-flac
+      #EXTINF:Sector Radio 80s (80s)
+      http://89.223.45.5:8000/geny-flac
+      #EXTINF:Sector Radio 90s (90s)
+      http://89.223.45.5:8000/next-flac
+      #EXTINF:Sector Radio 10s (10s)
+      http://stream.sectorradio.ru:8000/zed-flac
+      #EXTINF:Fréquence 3 (Rock/Electronic Dance Music)
+      http://master.net-radio.fr/frequence3.flac
+      #EXTINF:Fréquence 3 Urban (Hip Hop, Rap and R’n’B)
+      http://ice1.ikoula.net-radio.fr/frequence3urban.flac
+      #EXTINF:Czech Radio ČRo D-dur (Classical)
+      http://amp.cesnet.cz:8000/cro-d-dur.flac
+      #EXTINF:Czech Radio ČRo Jazz (Jazz)
+      http://amp.cesnet.cz:8000/cro-jazz.flac
+      #EXTINF:Czech Radio ČRo Radio Wave (Young Listeners)
+      http://amp.cesnet.cz:8000/cro-radio-wave.flac
+
+      # --- GROUP: NTS ---
+      #EXTINF:NTS 1
+      https://stream-relay-geo.ntslive.net/stream?client=direct
+      #EXTINF:NTS 2
+      https://stream-relay-geo.ntslive.net/stream2?client=direct
+      #EXTINF:NTS Poolside
+      https://stream-mixtape-geo.ntslive.net/mixtape4?client=direct
+      #EXTINF:NTS Slow Focus
+      https://stream-mixtape-geo.ntslive.net/mixtape?client=direct
+      #EXTINF:NTS Low Key
+      https://stream-mixtape-geo.ntslive.net/mixtape2?client=direct
+      #EXTINF:NTS Memory Lane
+      https://stream-mixtape-geo.ntslive.net/mixtape6?client=direct
+      #EXTINF:NTS 4 to the Floor
+      https://stream-mixtape-geo.ntslive.net/mixtape5?client=direct
+      #EXTINF:NTS Island Time
+      https://stream-mixtape-geo.ntslive.net/mixtape21?client=direct
+      #EXTINF:NTS The Tube
+      https://stream-mixtape-geo.ntslive.net/mixtape26?client=direct
+      #EXTINF:NTS Sheet Music
+      https://stream-mixtape-geo.ntslive.net/mixtape35?client=direct
+      #EXTINF:NTS Feelings
+      https://stream-mixtape-geo.ntslive.net/mixtape27?client=direct
+      #EXTINF:NTS Expansions
+      https://stream-mixtape-geo.ntslive.net/mixtape3?client=direct
+      #EXTINF:NTS Rap House
+      https://stream-mixtape-geo.ntslive.net/mixtape22?client=direct
+      #EXTINF:NTS Labyrinth
+      https://stream-mixtape-geo.ntslive.net/mixtape31?client=direct
+      #EXTINF:NTS Sweat
+      https://stream-mixtape-geo.ntslive.net/mixtape24?client=direct
+      #EXTINF:NTS Otaku
+      https://stream-mixtape-geo.ntslive.net/mixtape36?client=direct
+      #EXTINF:NTS The Pit
+      https://stream-mixtape-geo.ntslive.net/mixtape34?client=direct
+      #EXTINF:NTS Field Recordings
+      https://stream-mixtape-geo.ntslive.net/mixtape23?client=direct
+
+
+
+  # 2. Python playlist generator script (Flattened / No Groups)
+  generate-playlists:
+    content: |
+      #!/usr/bin/env python3
+      import sys, re
+      from pathlib import Path
+
+      def generate():
+          m3u_input = Path(sys.argv[1])
+          out_dir = Path(sys.argv[2])
+          out_dir.mkdir(parents=True, exist_ok=True)
+
+          stations = []
+          current_inf = None
+          active_marker_group = "Uncategorized"
+
+          with open(m3u_input, "r", encoding="utf-8") as f:
+              for line in f:
+                  line = line.strip()
+                  if not line or line.startswith("#EXTM3U"):
+                      continue
+
+                  # 1. Look for Human-Readable Section Markers
+                  # Matches: # --- GROUP: My Genre ---
+                  if line.startswith("# --- GROUP:"):
+                      marker_match = re.search(r'GROUP:(.*?)---', line)
+                      if marker_match:
+                          active_marker_group = marker_match.group(1).strip()
+                      continue
+
+                  # 2. Skip other non-EXTINF comments
+                  if line.startswith("#") and not line.startswith("#EXTINF"):
+                      continue
+                  if line.startswith("#EXTINF"):
+                      current_inf = line
+                  elif current_inf and line.startswith("http"):
+                      # 3. Determine Group: Priority 1: group-title="" | Priority 2: Marker
+                      group_match = re.search(r'group-title="([^"]+)"', current_inf)
+                      if group_match:
+                          genre = group_match.group(1).split(';')[0].strip()
+                      else:
+                          genre = active_marker_group
+                      # 4. Clean Station Name
+                      parts = current_inf.split(",", 1)
+                      name_raw = parts[1] if len(parts) > 1 else parts[0].replace("#EXTINF:", "")
+                      name_clean = name_raw.split(":")[0].strip()
+
+                      safe_name = re.sub(r'[^\w\s-]', '', name_clean).strip().replace(' ', '_')
+                      safe_genre = re.sub(r'[^\w\s-]', '', genre).strip().replace(' ', '_')
+
+                      stations.append({
+                          "genre_dir": safe_genre,
+                          "filename": f"{safe_name}.m3u",
+                          "content": f"#EXTM3U\n#EXTINF:-1,{name_clean}\n{line}\n"
+                      })
+                      current_inf = None
+
+          # Write out the folder structure
+          for station in stations:
+              target_dir = out_dir / station["genre_dir"]
+              target_dir.mkdir(exist_ok=True)
+
+              target_path = target_dir / station["filename"]
+
+              # Collision handling for duplicate names
+              #counter = 1
+              #original_stem = target_path.stem
+              #while target_path.exists():
+              #    target_path = target_dir / f"{original_stem}_{counter}.m3u"
+              #    counter += 1
+              with open(target_path, "w", encoding="utf-8") as f:
+                  f.write(station["content"])
+
+      if __name__ == "__main__":
+          generate()
+
+
+  # 3. Gerbera DLNA config (Unchanged)
+  gerbera-conf:
+    content: |
+      <config xmlns="http://gerbera.org/config" version="1">
+        <server>
+          <friendlyName>My Radio</friendlyName>
+          <uuid>12345678-90ab-cdef-1234-567890abcdef</uuid>
+          <port>8200</port>
+
+          <home>/var/lib/gerbera</home>
+          <storage>
+            <sqlite3 enabled="yes">
+              <database-file>gerbera.db</database-file>
+            </sqlite3>
+          </storage>
+        </server>
+
+        <ui enabled="yes">
+          <ip>0.0.0.0</ip>
+          <port>49152</port>
+        </ui>
+
+        <import>
+          <autoscan>
+            <directory location="/mnt/content" mode="inotify" recursive="yes"/>
+          </autoscan>
+        </import>
+      </config>
+
